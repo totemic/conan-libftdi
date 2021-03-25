@@ -1,164 +1,71 @@
---- CMakeLists.txt
-+++ CMakeLists.txt
-@@ -44,7 +44,7 @@
-     SET(LIB_SUFFIX "")
-     SET(PACK_ARCH "")
-   ELSE(CMAKE_SIZEOF_VOID_P EQUAL 8)
--    SET(LIB_SUFFIX 64)
-+    SET(LIB_SUFFIX "")
-     SET(PACK_ARCH .x86_64)
- endif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 5aecafc..7e44d50 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -25,12 +25,13 @@ if(${CMAKE_BUILD_TYPE} STREQUAL Debug)
+ endif(${CMAKE_BUILD_TYPE} STREQUAL Debug)
  
---- ftdipp/CMakeLists.txt
-+++ ftdipp/CMakeLists.txt
-@@ -16,7 +16,8 @@
-     set(cpp_headers   ftdi.hpp)
+ # find libusb
+-find_package ( USB1 REQUIRED )
+-include_directories ( ${LIBUSB_INCLUDE_DIR} )
++#find_package ( USB1 REQUIRED )
++#include_directories ( ${LIBUSB_INCLUDE_DIR} )
  
-     # Find Boost
--    find_package(Boost)
-+    find_package(Boost REQUIRED)
-+    include_directories(${CONAN_INCLUDE_DIRS_BOOST})
-     if(Boost_FOUND)
-     set(FTDI_BUILD_CPP True PARENT_SCOPE)
-     message(STATUS "Building libftdi++")
-@@ -26,6 +27,7 @@
+ # Find Boost
+ if (FTDIPP OR BUILD_TESTS)
+   find_package( Boost REQUIRED )
++  include_directories(${CONAN_INCLUDE_DIRS_BOOST})
+ endif()
  
-     math(EXPR VERSION_FIXUP "${MAJOR_VERSION} + 1")    # Compatiblity with previous releases
-     set_target_properties(ftdipp PROPERTIES VERSION ${VERSION_FIXUP}.${MINOR_VERSION}.0 SOVERSION 1)
-+    set_target_properties(ftdipp PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+ # Set components
+@@ -57,7 +58,7 @@ if ( NOT DEFINED LIB_SUFFIX )
+       AND NOT EXISTS "/etc/debian_version"
+       AND NOT EXISTS "/etc/arch-release" )
+     if ( "${CMAKE_SIZEOF_VOID_P}" EQUAL "8" )
+-      set ( LIB_SUFFIX 64 )
++      set ( LIB_SUFFIX "" )
+     endif ()
+   endif ()
+ endif ()
+diff --git a/ftdipp/CMakeLists.txt b/ftdipp/CMakeLists.txt
+index fac5bcc..435ee72 100644
+--- a/ftdipp/CMakeLists.txt
++++ b/ftdipp/CMakeLists.txt
+@@ -12,6 +12,7 @@ include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR}
+ include_directories(${Boost_INCLUDE_DIRS})
  
-     # Static library
-     add_library(ftdipp-static STATIC ${cpp_sources})
-@@ -38,19 +40,28 @@
-     # Dependencies
-     target_link_libraries(ftdipp ftdi ${LIBUSB_LIBRARIES} ${BOOST_LIBRARIES})
+ # Shared library
++if ( NOT STATICLIBS )
+ add_library(ftdipp1 SHARED ${cpp_sources})
  
-+    if(BUILD_SHARED_LIBS)
-+        set_property(TARGET ftdipp-static PROPERTY EXCLUDE_FROM_ALL ON)
-+    else()
-+        set_property(TARGET ftdipp PROPERTY EXCLUDE_FROM_ALL ON)
-+    endif()
-     # Install
-     if(${UNIX})
--
-+    if(BUILD_SHARED_LIBS)
-     install( TARGETS ftdipp
--                LIBRARY DESTINATION lib${LIB_SUFFIX}
-+                ARCHIVE DESTINATION lib
-+                LIBRARY DESTINATION lib
-+                RUNTIME DESTINATION bin
-                 COMPONENT sharedlibs
-                 )
--
-+    else()
-     install( TARGETS ftdipp-static
--                ARCHIVE DESTINATION lib${LIB_SUFFIX}
-+                ARCHIVE DESTINATION lib
-+                LIBRARY DESTINATION lib
-+                RUNTIME DESTINATION bin
-                 COMPONENT staticlibs
-                 )
--
-+    endif()
-     install( FILES ${cpp_headers}
-                 DESTINATION include
-                 COMPONENT headers
-@@ -59,17 +70,21 @@
-     endif(${UNIX})
- 
-     if(${WIN32})
--
-+    if(BUILD_SHARED_LIBS)
-     install( TARGETS ftdipp
--                DESTINATION bin
-+                ARCHIVE DESTINATION lib
-+                LIBRARY DESTINATION lib
-+                RUNTIME DESTINATION bin
-                 COMPONENT sharedlibs
-                 )
--
-+    else()
-     install( TARGETS ftdipp-static
--                DESTINATION bin
-+                ARCHIVE DESTINATION lib
-+                LIBRARY DESTINATION lib
-+                RUNTIME DESTINATION bin
-                 COMPONENT staticlibs
-                 )
--
-+    endif()
-     install( FILES ${cpp_headers}
-                 DESTINATION include
-                 COMPONENT headers
---- src/CMakeLists.txt
-+++ src/CMakeLists.txt
-@@ -11,6 +11,7 @@
- 
- math(EXPR VERSION_FIXUP "${MAJOR_VERSION} + 1")    # Compatiblity with previous releases
- set_target_properties(ftdi PROPERTIES VERSION ${VERSION_FIXUP}.${MINOR_VERSION}.0 SOVERSION 1)
-+set_target_properties(ftdi PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+ math(EXPR VERSION_FIXUP "${MAJOR_VERSION} + 1")    # Compatibility with previous releases
+@@ -28,6 +29,7 @@ install ( TARGETS ftdipp1
+ 					LIBRARY DESTINATION lib${LIB_SUFFIX}
+ 					ARCHIVE DESTINATION lib${LIB_SUFFIX}
+ 				)
++endif ()
  
  # Static library
- add_library(ftdi-static STATIC ${c_sources})
-@@ -23,19 +24,29 @@
- # Dependencies
- target_link_libraries(ftdi ${LIBUSB_LIBRARIES})
+ if ( STATICLIBS )
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 17b3617..d2d554d 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -20,7 +20,7 @@ configure_file(ftdi_version_i.h.in "${CMAKE_CURRENT_BINARY_DIR}/ftdi_version_i.h
+ # Targets
+ set(c_sources     ${CMAKE_CURRENT_SOURCE_DIR}/ftdi.c ${CMAKE_CURRENT_SOURCE_DIR}/ftdi_stream.c CACHE INTERNAL "List of c sources" )
+ set(c_headers     ${CMAKE_CURRENT_SOURCE_DIR}/ftdi.h CACHE INTERNAL "List of c headers" )
+-
++if ( NOT STATICLIBS )
+ add_library(ftdi1 SHARED ${c_sources})
  
-+if(BUILD_SHARED_LIBS)
-+    set_property(TARGET ftdi-static PROPERTY EXCLUDE_FROM_ALL ON)
-+else()
-+    set_property(TARGET ftdi PROPERTY EXCLUDE_FROM_ALL ON)
-+endif()
-+
- # Install
- if(${UNIX})
+ math(EXPR VERSION_FIXUP "${MAJOR_VERSION} + 1")    # Compatibility with previous releases
+@@ -37,7 +37,7 @@ install ( TARGETS ftdi1
+           LIBRARY DESTINATION lib${LIB_SUFFIX}
+           ARCHIVE DESTINATION lib${LIB_SUFFIX}
+         )
 -
-+if(BUILD_SHARED_LIBS)
-    install( TARGETS ftdi
--            LIBRARY DESTINATION lib${LIB_SUFFIX}
-+            ARCHIVE DESTINATION lib
-+            LIBRARY DESTINATION lib
-+            RUNTIME DESTINATION bin
-             COMPONENT sharedlibs
-             )
--
-+else()
-    install( TARGETS ftdi-static
--            ARCHIVE DESTINATION lib${LIB_SUFFIX}
-+            ARCHIVE DESTINATION lib
-+            LIBRARY DESTINATION lib
-+            RUNTIME DESTINATION bin
-             COMPONENT staticlibs
-             )
--
-+endif()
-    install( FILES ${c_headers}
-             DESTINATION include
-             COMPONENT headers
-@@ -44,17 +55,21 @@
- endif(${UNIX})
- 
- if(${WIN32})
--
-+if(BUILD_SHARED_LIBS)
-    install( TARGETS ftdi
--            DESTINATION bin
-+            ARCHIVE DESTINATION lib
-+            LIBRARY DESTINATION lib
-+            RUNTIME DESTINATION bin
-             COMPONENT sharedlibs
-             )
--
-+else()
-    install( TARGETS ftdi-static
--            DESTINATION bin
-+            ARCHIVE DESTINATION lib
-+            LIBRARY DESTINATION lib
-+            RUNTIME DESTINATION bin
-             COMPONENT staticlibs
-             )
--
-+endif()
-    install( FILES ${c_headers}
-             DESTINATION include
-             COMPONENT headers
++endif ()
+ if ( STATICLIBS )
+   add_library(ftdi1-static STATIC ${c_sources})
+   target_link_libraries(ftdi1-static ${LIBUSB_LIBRARIES})

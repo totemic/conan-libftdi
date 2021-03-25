@@ -47,16 +47,14 @@ class LibFtdi(ConanFile):
             del self.settings.compiler.cppstd
 
     def source(self):
-        #tools.get(**self.conan_data["sources"][self.version])
         tools.get("{0}/download/libftdi1-{1}.tar.bz2".format(self.homepage, self.version),
                   sha256="7c7091e9c86196148bd41177b4590dccb1510bfe6cea5bf7407ff194482eb049")
         os.rename("libftdi1-{}".format(self.version), self._source_subfolder)
 
     def requirements(self):
         self.requires("libusb/1.0.22@totemic/stable")
-        #self.requires("libusb-compat/0.1.7")
-        #if self.options.buildCpp:
-        #    self.requires("boost/1.74.0")
+        if self.options.buildCpp:
+           self.requires("boost/1.75.0")
 
     def _configure_cmake(self):
         if self._cmake:
@@ -74,7 +72,6 @@ class LibFtdi(ConanFile):
         return self._cmake
 
     def _patch_sources(self):
-        #pass
         tools.patch(base_path=self._source_subfolder, patch_file="patches/0001-cmake-fixes.patch")
         tools.replace_in_file(os.path.join(self._source_subfolder, "CMakeLists.txt"), "CMAKE_BINARY_DIR", "PROJECT_BINARY_DIR")
         tools.replace_in_file(os.path.join(self._source_subfolder, "CMakeLists.txt"), "CMAKE_SOURCE_DIR", "PROJECT_SOURCE_DIR")
@@ -94,5 +91,5 @@ class LibFtdi(ConanFile):
 
     def package_info(self):
         if self.options.buildCpp:
-            self.cpp_info.libs.append("ftdipp")
-        self.cpp_info.libs.append("ftdi")
+            self.cpp_info.libs.append("ftdipp1")
+        self.cpp_info.libs.append("ftdi1")
